@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>عضوگیر بله</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<style>
+body{font-family:Tahoma,Vazirmatn,system-ui,sans-serif}
+.page{display:none}
+.page.active{display:block}
+.hidden-important{display:none !important}
+.nav-item{transition:all .2s}
+.nav-item:active{transform:scale(.96)}
+.card{background:#0f172a;border:1px solid #1e293b;border-radius:24px}
+.wheel-container{position:relative;width:290px;height:290px;margin:0 auto}
+#wheel{width:100%;height:100%;border-radius:50%;border:12px solid #eab308;position:relative;transition:transform 4.5s cubic-bezier(.17,.67,.12,.99)}
+.segment{position:absolute;width:50%;height:50%;top:50%;left:50%;transform-origin:0% 0%;display:flex;align-items:center;justify-content:center;font-weight:bold;color:white;text-shadow:0 2px 4px rgba(0,0,0,.8);font-size:13px}
+.admin-pulse{animation:adminPulse 1.5s ease-in-out infinite}
+@keyframes adminPulse{0%,100%{opacity:1}50%{opacity:.4}}
+.event-row{animation:eventIn .25s ease-out}
+@keyframes eventIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.menu-item{display:block;width:100%;text-align:right;padding:12px 16px}
+.menu-item:hover{background:#1e293b}
+</style>
+</head>
+<body class="bg-gray-950 text-white min-h-screen pb-20">
+
+<header class="bg-gradient-to-r from-blue-600 to-indigo-600 py-6 shadow-lg sticky top-0 z-50">
+  <div class="max-w-2xl mx-auto px-4 text-center flex items-center justify-between relative">
+    <div class="relative">
+      <button id="menu-btn" onclick="toggleMenu()" class="text-white text-2xl px-2" style="display:none"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+      <div id="top-menu" class="hidden absolute right-0 mt-3 w-56 bg-slate-900 border border-slate-700 rounded-2xl overflow-hidden shadow-2xl z-50">
+        <button class="menu-item" onclick="navigateTo('wallet-page')">کیف پول</button>
+        <button class="menu-item" onclick="navigateTo('support-page')">پشتیبانی</button>
+        <button class="menu-item" onclick="navigateTo('track-page')">پیگیری</button>
+        <button class="menu-item" onclick="navigateTo('about-page')">درباره ما</button>
+        <button class="menu-item" onclick="logout()">خروج</button>
+      </div>
+    </div>
+    <h1 class="text-3xl sm:text-4xl font-bold">👥 عضوگیر بله</h1>
+    <div class="w-10"></div>
+  </div>
+</header>
+
+<main class="max-w-2xl mx-auto px-4 pt-6">
+
+  <div id="auth-page" class="page active">
+    <div class="card p-6 mb-4">
+      <h2 class="text-2xl font-bold mb-4 text-center">ورود</h2>
+      <div id="step-phone" class="space-y-4">
+        <input id="phone-input" dir="ltr" inputmode="numeric" class="w-full bg-slate-950 border border-slate-700 rounded-2xl px-4 py-4 text-lg outline-none" placeholder="شماره موبایل 09..." />
+        <button onclick="sendOtp()" class="w-full bg-blue-600 hover:bg-blue-500 rounded-2xl py-4 font-bold">ارسال کد</button>
+      </div>
+      <div id="step-referral" class="hidden space-y-4 mt-4">
+        <div class="text-slate-300 text-sm">کد معرف فقط یک‌بار قابل ثبت است.</div>
+        <input id="ref-input" dir="ltr" class="w-full bg-slate-950 border border-slate-700 rounded-2xl px-4 py-4 text-lg outline-none" placeholder="کد معرف" />
+        <button onclick="saveReferral()" class="w-full bg-fuchsia-600 hover:bg-fuchsia-500 rounded-2xl py-4 font-bold">ثبت کد معرف</button>
+        <button onclick="skipReferral()" class="w-full bg-slate-700 hover:bg-slate-600 rounded-2xl py-4 font-bold">رد کردن</button>
+      </div>
+      <div id="step-otp" class="hidden space-y-4 mt-4">
+        <div class="text-slate-300 text-sm">کد ۴ رقمی ارسال شد.</div>
+        <input id="otp-input" dir="ltr" inputmode="numeric" maxlength="4" class="w-full bg-slate-950 border border-slate-700 rounded-2xl px-4 py-4 text-center text-2xl tracking-[0.5em] outline-none" placeholder="••••" />
+        <button onclick="verifyOtp()" class="w-full bg-emerald-600 hover:bg-emerald-500 rounded-2xl py-4 font-bold">ورود</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="app-page" class="hidden-important">
+    <section id="home-page" class="page active space-y-5">
+      <div class="card p-5">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-slate-400">کیف پول</span>
+          <button onclick="navigateTo('wallet-page')" class="text-emerald-400 text-2xl font-bold">💳 <span id="wallet-balance">0</span></button>
+        </div>
+        <div class="grid grid-cols-2 gap-3 text-sm">
+          <div class="bg-slate-950 rounded-2xl p-4">
+            <div class="text-slate-400 mb-1">شناسه کاربر</div>
+            <div id="user-id" class="font-mono text-xs break-all"></div>
+          </div>
+          <div class="bg-slate-950 rounded-2xl p-4">
+            <div class="text-slate-400 mb-1">کد معرف</div>
+            <div id="ref-code" class="font-mono text-xs break-all"></div>
+          </div>
+        </div>
+        <div class="mt-3 text-xs text-slate-400">کد ثبت‌شده: <span id="used-ref-code">ثبت نشده</span></div>
+      </div>
+
+      <div class="card p-5 text-center">
+        <div class="text-xl font-bold mb-2">خانه</div>
+        <p class="text-slate-300 text-sm">از اینجا می‌توانی به جایزه، سفارش و گردونه بروی.</p>
+        <button onclick="navigateTo('reward-page')" class="mt-4 w-full bg-amber-500 text-black rounded-2xl py-4 font-bold">جایزه</button>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <button onclick="navigateTo('order-page')" class="bg-blue-600 rounded-2xl py-4 font-bold">ثبت سفارش</button>
+        <button onclick="navigateTo('wheel-page')" class="bg-fuchsia-600 rounded-2xl py-4 font-bold">گردونه شانس</button>
+      </div>
+    </section>
+
+    <section id="wallet-page" class="page space-y-4">
+      <div class="card p-5 space-y-4">
+        <h2 class="text-2xl font-bold text-center">کیف پول</h2>
+        <div class="text-center text-4xl font-bold text-emerald-400" id="wallet-balance2">0</div>
+        <div class="grid grid-cols-2 gap-3 text-sm">
+          <div class="bg-slate-950 rounded-2xl p-4">
+            <div class="text-slate-400 mb-1">شناسه</div>
+            <div id="wallet-userid" class="font-mono text-xs break-all"></div>
+          </div>
+          <div class="bg-slate-950 rounded-2xl p-4">
+            <div class="text-slate-400 mb-1">کد معرف</div>
+            <div id="wallet-refcode" class="font-mono text-xs break-all"></div>
+          </div>
+        </div>
+        <button onclick="openDeposit()" class="w-full bg-blue-600 rounded-2xl py-4 font-bold">واریز</button>
+        <button onclick="navigateTo('transfer-page')" class="w-full bg-indigo-600 rounded-2xl py-4 font-bold">انتقال اعتبار</button>
+        <button onclick="navigateTo('referral-page')" class="w-full bg-amber-500 text-black rounded-2xl py-4 font-bold">جایزه نقدی</button>
+      </div>
+    </section>
+
+    <section id="deposit-page" class="page space-y-4">
+      <div class="card p-5 space-y-4">
+        <h2 class="text-2xl font-bold text-center">واریز اعتبار</h2>
+        <button onclick="showDepositMethod('manual')" class="w-full bg-slate-800 rounded-2xl py-4 font-bold">واریز دستی</button>
+        <button onclick="showDepositMethod('direct')" class="w-full bg-slate-700 rounded-2xl py-4 font-bold">واریز مستقیم (غیرفعال)</button>
+        <div id="deposit-direct-section" class="hidden text-slate-400 text-sm">این گزینه فعلاً غیرفعال است.</div>
+        <div id="deposit-manual-section" class="hidden space-y-3">
+          <div class="bg-slate-950 rounded-2xl p-4 text-center font-mono">6037997414266180</div>
+          <input id="deposit-amount" type="number" class="w-full bg-slate-950 border border-slate-700 rounded-2xl px-4 py-4 outline-none" placeholder="مبلغ واریز">
+          <input id="deposit-ref" type="text" class="w-full bg-slate-950 border border-slate-700 rounded-2xl px-4 py-4 outline-none" placeholder="کد پیگیری">
+          <button onclick="submitDepositRequest()" class="w-full bg-blue-600 rounded-2xl py-4 font-bold">تایید و ارسال</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="transfer-page" class="page space-y-4">
+      <div class="card p-5">
+        <h2 class="text-2xl font-bold text-center mb-4">انتقال اعتبار</h2>
+        <input id="transfer-wallet-id" class="w-full bg-slate-950 border border-slate-700 rounded-2xl px-4 py-4 mb-3 outline-none" placeholder="شناسه کیف پول مقصد">
+        <input id="transfer-amount" type="number" class="w-full bg-slate-950 border border-slate-700 rounded-2xl px-4 py-4 mb-4 outline-none" placeholder="مبلغ انتقال">
+        <button onclick="submitTransferRequest()" class="w-full bg-indigo-600 rounded-2xl py-4 font-bold">تایید انتقال</button>
+      </div>
+    </section>
+
+    <section id="referral-page" class="page space-y-4">
+      <div class="card p-5 space-y-3">
+        <h2 class="text-2xl font-bold text-center">جایزه نقدی</h2>
+        <div class="text-slate-300">هر ۵ دعوت موفق = ۲۰٬۰۰۰ اعتبار</div>
+        <div class="text-slate-400">دعوت موفق: <span id="invite-count">0</span></div>
+        <div class="text-green-400">اعتبار جایزه: <span id="free-reward">0</span></div>
+        <div class="bg-slate-950 rounded-2xl p-4 text-sm">کد معرف شما: <span id="ref-code2" class="font-mono"></span></div>
+      </div>
+    </section>
+
+    <section id="order-page" class="page space-y-4">
+      <div class="card p-5">
+        <h2 class="text-2xl font-bold mb-4 text-center">ثبت سفارش</h2>
+        <select id="product-select" class="w-full bg-slate-950 border border-slate-700 rounded-2xl px-4 py-4 mb-3 outline-none">
+          <option value="100" data-price="25000">100 عضو — 25,000 تومان</option>
+          <option value="200" data-price="50000">200 عضو — 50,000 تومان</option>
+          <option value="300" data-price="75000">300 عضو — 75,000 تومان</option>
+          <option value="400" data-price="100000">400 عضو — 100,000 تومان</option>
+          <option value="500" data-price="125000">500 عضو — 125,000 تومان</option>
+          <option value="1000" data-price="250000">1000 عضو — 250,000 تومان</option>
+        </select>
+        <input id="channel-input" class="w-full bg-slate-950 border border-slate-700 rounded-2xl px-4 py-4 mb-3 outline-none" placeholder="آیدی یا لینک کانال">
+        <input id="coupon-input" class="w-full bg-slate-950 border border-slate-700 rounded-2xl px-4 py-4 mb-3 outline-none" placeholder="کد تخفیف (اگر داری)">
+        <div class="bg-slate-950 rounded-2xl p-4 mb-4 flex items-center justify-between">
+          <span>مبلغ سفارش</span><span id="selected-price" class="font-bold text-amber-400">25,000 تومان</span>
+        </div>
+        <button onclick="submitOrder()" class="w-full bg-emerald-600 hover:bg-emerald-500 rounded-2xl py-4 font-bold">ثبت سفارش</button>
+        <p id="order-msg" class="text-center text-red-400 mt-3"></p>
+      </div>
+    </section>
+
+    <section id="wheel-page" class="page space-y-4">
+      <div class="card p-5 text-center"><h2 class="text-2xl font-bold mb-2">گردونه شانس</h2></div>
+      <div class="wheel-container">
+        <div class="absolute -top-2 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-b-12 border-transparent border-b-red-500 z-30"></div>
+        <div id="wheel" class="bg-gradient-to-br from-purple-600 via-pink-600 to-rose-600 shadow-2xl"></div>
+      </div>
+      <div class="text-center mt-4">
+        <button onclick="spinWheel()" id="spin-btn" class="bg-yellow-500 hover:bg-yellow-400 disabled:bg-gray-600 text-black font-bold text-2xl px-16 py-5 rounded-3xl shadow-xl">🎰 بچرخون!</button>
+      </div>
+      <div id="wheel-result" class="hidden mt-8 bg-zinc-900 rounded-3xl p-6 text-center"></div>
+    </section>
+
+    <section id="support-page" class="page space-y-4">
+      <div class="card p-5">
+        <h2 class="text-2xl font-bold mb-4 text-center">پشتیبانی</h2>
+        <textarea id="support-text" rows="7" placeholder="مشکل خود را بنویسید..." class="w-full bg-slate-950 border border-slate-700 rounded-2xl px-4 py-4 outline-none resize-none mb-3"></textarea>
+        <button onclick="submitSupport()" class="w-full bg-blue-600 rounded-2xl py-4 font-bold">ارسال به مدیریت</button>
+      </div>
+      <div class="card p-5">
+        <h3 class="font-bold mb-3">سوالات من</h3>
+        <div id="my-support-list" class="space-y-3"></div>
+      </div>
+    </section>
+
+    <section id="track-page" class="page space-y-4">
+      <div class="card p-5">
+        <h2 class="text-2xl font-bold mb-4 text-center">پیگیری سفارش‌ها</h2>
+        <div id="my-orders" class="space-y-3"></div>
+      </div>
+      <div class="card p-5">
+        <h2 class="text-xl font-bold mb-4 text-center">پیگیری واریزی‌ها</h2>
+        <div id="my-deposits" class="space-y-3"></div>
+      </div>
+      <div class="card p-5">
+        <h2 class="text-xl font-bold mb-4 text-center">پیگیری انتقال‌ها</h2>
+        <div id="my-transfers" class="space-y-3"></div>
+      </div>
+    </section>
+
+    <section id="about-page" class="page space-y-4">
+      <div class="card p-5">
+        <h2 class="text-2xl font-bold mb-4">درباره ما</h2>
+        <p class="text-slate-300">این برنامه توسط تیم توسعه دهنده رزبان تولید شده است.</p>
+        <div class="mt-4 text-center">
+          <button onclick="openAdminModal()" class="text-xs text-slate-400 underline">مدیریت</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="admin-page" class="page space-y-4">
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="text-2xl font-bold flex items-center gap-2">🛠️ پنل مدیریت <span class="w-2.5 h-2.5 rounded-full bg-green-500 admin-pulse"></span></h2>
+        <button onclick="adminLogout()" class="text-sm text-slate-400 bg-slate-800 px-4 py-2 rounded-xl">خروج</button>
+      </div>
+      <div class="grid grid-cols-2 gap-3 mb-3">
+        <div class="card p-4 text-center"><div id="stat-orders" class="text-3xl font-bold text-blue-400">۰</div><div class="text-xs text-slate-400">سفارش‌ها</div></div>
+        <div class="card p-4 text-center"><div id="stat-support" class="text-3xl font-bold text-indigo-400">۰</div><div class="text-xs text-slate-400">پشتیبانی</div></div>
+        <div class="card p-4 text-center"><div id="stat-spins" class="text-3xl font-bold text-yellow-400">۰</div><div class="text-xs text-slate-400">چرخش</div></div>
+        <div class="card p-4 text-center"><div id="stat-visits" class="text-3xl font-bold text-zinc-300">۰</div><div class="text-xs text-slate-400">ورود</div></div>
+      </div>
+      <div class="card p-5">
+        <div class="flex gap-2 mb-3">
+          <button onclick="setAdminView('events')" id="view-events-btn" class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-blue-600">رویدادها</button>
+          <button onclick="setAdminView('customers')" id="view-customers-btn" class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-slate-800">مشتری‌ها</button>
+        </div>
+        <div id="admin-filters" class="flex gap-2 mb-4 overflow-x-auto pb-1">
+          <button data-filter="all" onclick="setAdminFilter('all')" class="admin-filter-btn whitespace-nowrap px-4 py-2 rounded-xl text-sm bg-blue-600">همه</button>
+          <button data-filter="order" onclick="setAdminFilter('order')" class="admin-filter-btn whitespace-nowrap px-4 py-2 rounded-xl text-sm bg-slate-800">سفارش‌ها</button>
+          <button data-filter="support" onclick="setAdminFilter('support')" class="admin-filter-btn whitespace-nowrap px-4 py-2 rounded-xl text-sm bg-slate-800">پشتیبانی</button>
+          <button data-filter="deposit" onclick="setAdminFilter('deposit')" class="admin-filter-btn whitespace-nowrap px-4 py-2 rounded-xl text-sm bg-slate-800">واریز</button>
+          <button data-filter="transfer" onclick="setAdminFilter('transfer')" class="admin-filter-btn whitespace-nowrap px-4 py-2 rounded-xl text-sm bg-slate-800">انتقال</button>
+          <button data-filter="spin" onclick="setAdminFilter('spin')" class="admin-filter-btn whitespace-nowrap px-4 py-2 rounded-xl text-sm bg-slate-800">گردونه</button>
+          <button data-filter="visit" onclick="setAdminFilter('visit')" class="admin-filter-btn whitespace-nowrap px-4 py-2 rounded-xl text-sm bg-slate-800">ورود</button>
+        </div>
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs text-slate-500" id="admin-updated">در حال بارگذاری...</span>
+          <div class="flex gap-2">
+            <button onclick="refreshAdminEvents(true)" class="text-xs text-slate-400 bg-slate-800 px-3 py-1.5 rounded-lg">بروزرسانی</button>
+            <button onclick="clearAllEvents()" class="text-xs text-red-400 bg-slate-800 px-3 py-1.5 rounded-lg">پاک کردن همه</button>
+          </div>
+        </div>
+        <div id="admin-events" class="space-y-2"></div>
+        <div id="admin-empty" class="hidden text-center text-slate-500 py-12">هنوز چیزی ثبت نشده</div>
+      </div>
+    </section>
+
+    <section id="reward-page" class="page space-y-4">
+      <div class="card p-5">
+        <h2 class="text-2xl font-bold mb-4 text-center">جایزه‌ها</h2>
+        <div class="bg-slate-950 rounded-2xl p-4 mb-4 text-sm space-y-2">
+          <div>کد معرف شما: <span id="my-ref-code" class="font-mono"></span></div>
+          <div>دعوت‌شده‌ها با کد شما: <span id="my-referrals" class="font-bold">0</span></div>
+        </div>
+        <div class="space-y-3">
+          <button id="reward-5" onclick="claimReward(5)" class="w-full rounded-2xl py-4 font-bold bg-slate-800">۵ دعوت = ۱۰۰ عضو رایگان</button>
+          <button id="reward-10" onclick="claimReward(10)" class="w-full rounded-2xl py-4 font-bold bg-slate-800">۱۰ دعوت = ۲۰۰ عضو رایگان</button>
+          <button id="reward-20" onclick="claimReward(20)" class="w-full rounded-2xl py-4 font-bold bg-slate-800">۲۰ دعوت = ۵۰۰ عضو رایگان</button>
+        </div>
+      </div>
+      <div class="card p-5 space-y-3">
+        <h3 class="font-bold">ثبت کد معرف دوستان</h3>
+        <p class="text-xs text-slate-400">هر کاربر فقط یک‌بار می‌تواند کد معرف وارد کند.</p>
+        <div class="relative">
+          <input id="reward-ref-input" dir="ltr" class="w-full bg-slate-950 border border-slate-700 rounded-2xl px-4 py-4 pl-12 outline-none" placeholder="کد معرف را وارد کن">
+          <span id="reward-ref-indicator" class="absolute left-4 top-1/2 -translate-y-1/2 text-lg"></span>
+        </div>
+        <div id="reward-ref-msg" class="text-xs"></div>
+        <button id="reward-ref-btn" onclick="submitRewardReferral()" class="w-full bg-fuchsia-600 hover:bg-fuchsia-500 rounded-2xl py-4 font-bold">ثبت کد</button>
+      </div>
+    </section>
+  </div>
+</main>
+
+<nav id="bottom-nav" class="fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-700 max-w-2xl mx-auto">
+  <div class="flex justify-around items-center py-2 text-xs">
+    <button onclick="navigateTo('support-page')" class="nav-item flex flex-col items-center text-zinc-400 hover:text-white flex-1"><i class="fas fa-headset text-2xl mb-1"></i><span>پشتیبانی</span></button>
+    <button onclick="navigateTo('order-page')" class="nav-item flex flex-col items-center text-zinc-400 hover:text-white flex-1"><i class="fas fa-cart-plus text-2xl mb-1"></i><span>ثبت سفارش</span></button>
+    <button onclick="navigateTo('home-page')" class="nav-item flex flex-col items-center text-white scale-110 flex-1 -mt-6">
+      <div class="bg-blue-600 rounded-full p-4 shadow-xl shadow-blue-500/50"><i class="fas fa-home text-3xl"></i></div>
+      <span class="mt-1 text-blue-400 font-medium">خانه</span>
+    </button>
+    <button onclick="navigateTo('track-page')" class="nav-item flex flex-col items-center text-zinc-400 hover:text-white flex-1"><i class="fas fa-search text-2xl mb-1"></i><span>پیگیری</span></button>
+    <button onclick="navigateTo('about-page')" class="nav-item flex flex-col items-center text-zinc-400 hover:text-white flex-1"><i class="fas fa-info-circle text-2xl mb-1"></i><span>درباره ما</span></button>
+  </div>
+</nav>
+
+<div id="admin-modal" class="hidden fixed inset-0 bg-black/70 z-[100] flex items-center justify-center px-6">
+  <div class="bg-zinc-900 rounded-3xl p-8 w-full max-w-sm">
+    <h3 class="text-xl font-bold mb-4 text-center">ورود مدیر</h3>
+    <input id="admin-pass" type="password" placeholder="رمز مدیر" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-lg outline-none mb-4">
+    <div class="flex gap-3">
+      <button onclick="checkAdminPass()" class="flex-1 bg-blue-600 py-3 rounded-2xl font-bold">ورود</button>
+      <button onclick="closeAdminModal()" class="flex-1 bg-zinc-700 py-3 rounded-2xl font-bold">انصراف</button>
+    </div>
+  </div>
+</div>
+
+<div id="reply-modal" class="hidden fixed inset-0 bg-black/60 z-[110] flex items-center justify-center px-6">
+  <div class="bg-zinc-900 rounded-3xl p-6 w-full max-w-sm">
+    <h3 class="text-lg font-bold mb-3 text-center">پاسخ مدیر</h3>
+    <textarea id="reply-input" rows="5" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-4 py-3 outline-none resize-none mb-4" placeholder="پاسخ را بنویسید..."></textarea>
+    <div class="flex gap-3">
+      <button onclick="saveReply()" class="flex-1 bg-emerald-600 py-3 rounded-2xl font-bold">ثبت پاسخ</button>
+      <button onclick="closeReplyModal()" class="flex-1 bg-zinc-700 py-3 rounded-2xl font-bold">انصراف</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Surfaces any uncaught error as a visible alert instead of failing silently, so a problem shows up
+// on screen even without opening the browser console.
+window.addEventListener('error', function(e){
+  alert('خطای برنامه: '+(e && e.message ? e.message : 'نامشخص'));
+});
+window.addEventListener('unhandledrejection', function(e){
+  alert('خطای برنامه (async): '+(e && e.reason && e.reason.message ? e.reason.message : e.reason));
+});
+</script>
+
+<script>
+// Cross-device data layer — real Firebase Firestore backend.
+// Every browser/device that opens this file talks to the SAME Firestore project, so data written
+// on one phone (a transfer, a referral, an admin approval) is immediately visible to every other
+// phone. This is what makes wallet balances, referrals, and transfers actually work across users
+// and survive logout/login, instead of being stuck in one browser's local storage.
+// NOTE: Firestore security rules currently allow open read/write (see setup notes) so anyone who
+// has this file can read/write the database directly. That matches the app's existing security
+// model (the admin panel is only protected by a client-side password), but keep it in mind.
+const firebaseConfig = {
+  apiKey: "AIzaSyAIA0BL5hLqUq_xdzjfAD3AqemU5AZkmOg",
+  authDomain: "azogir-bale.firebaseapp.com",
+  projectId: "azogir-bale",
+  storageBucket: "azogir-bale.firebasestorage.app",
+  messagingSenderId: "1021855100765",
+  appId: "1:1021855100765:web:bb601ed524a30db615c2b4",
+  measurementId: "G-93J11V459H"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+(function(){
+  const eventsCol = () => db.collection('events');
+  // Returns the new record's Firestore document id so the app can map it back to the local copy.
+  window.fbAddEvent = async (eventObj) => {
+    const ref = await eventsCol().add(eventObj);
+    return ref.id;
+  };
+  window.fbGetEvents = async () => {
+    const snap = await eventsCol().get();
+    return snap.docs.map(d=>({ id:d.id, ...d.data() }));
+  };
+  window.fbDeleteAllEvents = async () => {
+    const snap = await eventsCol().get();
+    const batch = db.batch();
+    snap.docs.forEach(d=>batch.delete(d.ref));
+    await batch.commit();
+  };
+  // Firestore's update() natively supports dot-path keys (e.g. "data.status") to patch nested
+  // fields without overwriting the whole document, so no custom path-walking is needed here.
+  window.fbUpdateEvent = async (id, data) => {
+    await eventsCol().doc(id).update(data);
+  };
+  window.fbReady = true;
+  window.dispatchEvent(new Event('fb-ready'));
+})();
+</script>
+
+<script>
+const ADMIN_PASSWORD='admin1234';
+const LS={user:'app_user',otp:'app_otp',auth:'app_auth',lastSpin:'app_last_spin',refUsed:'app_ref_used',visits:'app_visits',support:'app_support',deposits:'app_deposits',orders:'app_orders',transfers:'app_transfers'};
+const prizes=[{text:'پوچ',color:'#ef4444',type:'lose'},{text:'دوباره چرخش',color:'#f59e0b',type:'again'},{text:'100 عضو رایگان',color:'#22c55e',type:'gift'},{text:'10 هزار اعتبار کیف پول',color:'#38bdf8',type:'wallet'},{text:'شانس قرعه کشی',color:'#a855f7',type:'lottery'},{text:'پوچ',color:'#ef4444',type:'lose'},{text:'دوباره چرخش',color:'#f59e0b',type:'again'},{text:'شانس قرعه کشی',color:'#a855f7',type:'lottery'}];
+const safeStopIndices=[0,4,5,7];
+let currentUser=null,currentAngle=0,spinning=false,visitorId=null,adminFilter='all',adminView='events',adminTimer=null,pendingReplyId=null,userSyncTimer=null;
+
+// Remote (Firebase) event cache + a map from a record's local id -> its Firestore document id,
+// so admin actions (reply/approve) can target the correct remote doc.
+let remoteEvents=[];
+let remoteDocIndex={};
+
+function S(k,v){localStorage.setItem(k,typeof v==='string'?v:JSON.stringify(v))}
+function G(k,d=null){const v=localStorage.getItem(k); if(v===null) return d; try{return JSON.parse(v)}catch(e){return v}}
+function uid(){return'U'+Date.now().toString(36).toUpperCase()+Math.random().toString(36).slice(2,6).toUpperCase()}
+function refcode(){return'R'+Math.random().toString(36).slice(2,8).toUpperCase()}
+function money(n){return Number(n||0).toLocaleString('fa-IR')}
+function digits(s){return(s||'').replace(/\D/g,'')}
+function phoneValid(p){return /^09\d{9}$/.test(digits(p))}
+function loadUser(){return G(LS.user,null)}
+// Remote profile persistence, keyed by phone number (the one durable identifier the user re-enters
+// on every login), stored in Firestore's "profiles" collection. This is what makes the wallet
+// balance, referral code, and claimed rewards survive a logout/login — and even a totally different
+// device or browser — since it's read from the shared database instead of local storage.
+async function loadRemoteProfile(phone){
+  if(!phone) return null;
+  // IMPORTANT: errors are NOT caught here anymore. A connectivity/permission error must be
+  // distinguishable from "this phone genuinely has no profile yet" — conflating the two used to
+  // mean a temporary network hiccup could be mistaken for a first-time signup, causing a brand
+  // new userId/refCode to be generated and silently overwrite (and orphan) the real profile.
+  // Callers (sendOtp/boot) now catch this explicitly and refuse to fabricate a new identity.
+  const doc=await db.collection('profiles').doc(phone).get();
+  return doc.exists ? doc.data() : null;
+}
+function saveRemoteProfile(){
+  if(!currentUser || !currentUser.phone) return;
+  try{
+    db.collection('profiles').doc(currentUser.phone).set(currentUser,{merge:true}).catch(e=>console.error('saveRemoteProfile: profiles write failed (check Firestore rules):', e));
+    if(currentUser.refCode) db.collection('refcodes').doc(currentUser.refCode).set({phone:currentUser.phone}).catch(e=>console.error('saveRemoteProfile: refcodes write failed (check Firestore rules):', e));
+    // BUGFIX #4 (support): keep a userId -> phone index so approveTransfer() can find the
+    // receiver's profile document (profiles are keyed by phone, but transfers are addressed
+    // by userId).
+    if(currentUser.userId) db.collection('walletindex').doc(currentUser.userId).set({phone:currentUser.phone}).catch(e=>console.error('saveRemoteProfile: walletindex write failed (check Firestore rules):', e));
+  }catch(e){ console.error('saveRemoteProfile failed:', e); }
+}
+// Looks up which phone number owns a given referral code, using the "refcodes" index kept up to
+// date by saveRemoteProfile(). Returns null if the code doesn't exist.
+// BUGFIX #3: normalize the code (trim + uppercase) before the lookup, since refcodes are stored
+// uppercase — any stray whitespace or lowercase input previously caused a false "invalid code".
+async function lookupRefCodeOwner(code){
+  if(!code) return null;
+  code = code.trim().toUpperCase();
+  try{
+    // Primary lookup: query the profiles collection directly by its refCode field. This does not
+    // depend on the separate "refcodes" index document having been written successfully — as long
+    // as the referring user's own profile was saved (required for them to log in and have a
+    // wallet at all), their code will be found.
+    const snap=await db.collection('profiles').where('refCode','==',code).limit(1).get();
+    if(!snap.empty) return snap.docs[0].id; // profiles are keyed by phone number
+    // Fallback: the lightweight refcodes index (kept for speed / older data).
+    const doc=await db.collection('refcodes').doc(code).get();
+    return doc.exists ? doc.data().phone : null;
+  }catch(e){ console.error('lookupRefCodeOwner failed (check Firestore rules):', e); return null; }
+}
+// BUGFIX #4 (support): resolves a userId to its owning phone number via the walletindex
+// collection, so a transfer's "to" (a userId) can be turned into a profiles() document id.
+async function lookupPhoneByUserId(userId){
+  if(!userId) return null;
+  try{
+    const snap=await db.collection('profiles').where('userId','==',userId).limit(1).get();
+    if(!snap.empty) return snap.docs[0].id;
+    const doc=await db.collection('walletindex').doc(userId).get();
+    return doc.exists ? doc.data().phone : null;
+  }catch(e){ console.error('lookupPhoneByUserId failed (check Firestore rules):', e); return null; }
+}
+// Uses Firestore's atomic increment so two people registering the same referral code at the same
+// moment can't overwrite each other's invite count (a plain read-modify-write could lose one).
+async function incrementInviterInvites(ownerPhone){
+  if(!ownerPhone) return;
+  try{
+    await db.collection('profiles').doc(ownerPhone).update({invites: firebase.firestore.FieldValue.increment(1)});
+  }catch(e){ console.error('incrementInviterInvites failed (check Firestore rules):', e); }
+}
+// Shared validation + one-time enforcement used by both the login-time referral step and the
+// reward-page referral box, so a user can only ever register a single valid code.
+// BUGFIX #3: normalize the incoming code (trim + uppercase) before every comparison/lookup.
+async function applyReferralCode(code){
+  code = (code||'').trim().toUpperCase();
+  if(!code) return {ok:false, message:'کد معرف را وارد کن'};
+  if(currentUser.referralUsed) return {ok:false, message:'قبلاً یک کد معرف ثبت کرده‌اید'};
+  if(code===(currentUser.refCode||'').toUpperCase()) return {ok:false, message:'نمی‌توانید کد خودتان را وارد کنید'};
+  const ownerPhone=await lookupRefCodeOwner(code);
+  if(!ownerPhone) return {ok:false, message:'کد معرف نامعتبر است'};
+  currentUser.referralUsed=code;
+  saveUser();
+  await incrementInviterInvites(ownerPhone);
+  return {ok:true, message:'کد معرف با موفقیت ثبت شد'};
+}
+function saveUser(){S(LS.user,currentUser); saveRemoteProfile()}
+function getVisits(){return G(LS.visits,[])}
+function setVisits(v){S(LS.visits,v)}
+function getSupport(){return G(LS.support,[])}
+function setSupport(v){S(LS.support,v)}
+function getDeposits(){return G(LS.deposits,[])}
+function setDeposits(v){S(LS.deposits,v)}
+function getOrders(){return G(LS.orders,[])}
+function setOrders(v){S(LS.orders,v)}
+function getTransfers(){return G(LS.transfers,[])}
+function setTransfers(v){S(LS.transfers,v)}
+function getLastSpin(){return parseInt(localStorage.getItem(LS.lastSpin)||'0',10)||0}
+function setLastSpin(ts){localStorage.setItem(LS.lastSpin,String(ts))}
+function getWallet(){return currentUser?.wallet||0}
+function setWallet(v){currentUser.wallet=Math.max(0,Math.floor(v)); saveUser(); refreshUI()}
+function addWallet(v){setWallet(getWallet()+v)}
+function subWallet(v){setWallet(Math.max(0,getWallet()-v))}
+function ensureUser(){if(!currentUser){currentUser={phone:'',userId:uid(),refCode:refcode(),wallet:0,referralUsed:null,invites:0,claimedRewards:[],freeMembers:0}; saveUser()}}
+function show(id){document.querySelectorAll('#app-page .page').forEach(p=>p.classList.remove('active'));const el=document.getElementById(id);if(el) el.classList.add('active')}
+function toggleMenu(){document.getElementById('top-menu').classList.toggle('hidden')}
+document.addEventListener('click',e=>{const menu=document.getElementById('top-menu');const wrap=menu?.parentElement;if(menu&&wrap&&!wrap.contains(e.target)) menu.classList.add('hidden')})
+
+function hideAuthShowApp(){
+  document.getElementById('auth-page').classList.add('hidden-important');
+  document.getElementById('auth-page').classList.remove('active');
+  document.getElementById('app-page').classList.remove('hidden-important');
+  document.getElementById('app-page').style.display='block';
+  const mb=document.getElementById('menu-btn'); if(mb) mb.style.display='';
+}
+function showAuth(){
+  document.getElementById('app-page').classList.add('hidden-important');
+  document.getElementById('app-page').style.display='none';
+  document.getElementById('auth-page').classList.remove('hidden-important');
+  document.getElementById('auth-page').classList.add('active');
+  const mb=document.getElementById('menu-btn'); if(mb) mb.style.display='none';
+  document.getElementById('top-menu').classList.add('hidden');
+}
+
+function refreshUI(){
+  if(!currentUser) return;
+  ['wallet-balance','wallet-balance2'].forEach(id=>{const el=document.getElementById(id); if(el) el.textContent=money(getWallet())});
+  ['user-id','wallet-userid'].forEach(id=>{const el=document.getElementById(id); if(el) el.textContent=currentUser.userId});
+  ['ref-code','wallet-refcode','ref-code2','my-ref-code'].forEach(id=>{const el=document.getElementById(id); if(el) el.textContent=currentUser.refCode});
+  const uc=document.getElementById('used-ref-code'); if(uc) uc.textContent=currentUser.referralUsed||'ثبت نشده';
+  const inviteCount=(currentUser.invites||0);
+  const reward=Math.floor(inviteCount/5)*20000;
+  const ic=document.getElementById('invite-count'); if(ic) ic.textContent=inviteCount.toLocaleString('fa-IR');
+  const fr=document.getElementById('free-reward'); if(fr) fr.textContent=money(reward);
+}
+
+function navigateTo(page){
+  hideAuthShowApp();
+  show(page);
+  document.getElementById('top-menu').classList.add('hidden');
+  if(page==='track-page') refreshUserViews();
+  if(page==='support-page') renderMySupport();
+  if(page==='reward-page') renderRewards();
+  if(page==='admin-page') refreshAdminEvents();
+  if(page==='wallet-page') refreshUI();
+}
+
+function openAdminModal(){document.getElementById('admin-modal').classList.remove('hidden')}
+function closeAdminModal(){document.getElementById('admin-modal').classList.add('hidden');document.getElementById('admin-pass').value=''}
+function checkAdminPass(){if(document.getElementById('admin-pass').value===ADMIN_PASSWORD){closeAdminModal();navigateTo('admin-page');refreshAdminEvents(true);startAdmin()}else alert('رمز اشتباه است')}
+function adminLogout(){stopAdmin();navigateTo('home-page')}
+function startAdmin(){stopAdmin();adminTimer=setInterval(()=>refreshAdminEvents(true),5000)}
+function stopAdmin(){if(adminTimer){clearInterval(adminTimer);adminTimer=null}}
+
+// BUGFIX #2 (support): the remote profile's wallet is now applied explicitly and takes
+// precedence over whatever is in the freshly-built/local user object, so a returning user's
+// balance always reflects the database instead of a stale/zeroed local copy.
+async function sendOtp(){
+  const phone=digits(document.getElementById('phone-input').value);
+  if(!phoneValid(phone)) return alert('شماره معتبر وارد کن');
+  visitorId=localStorage.getItem('visitor_id')||uid();
+  localStorage.setItem('visitor_id',visitorId);
+  let remoteProfile;
+  try{
+    remoteProfile=await loadRemoteProfile(phone);
+  }catch(e){
+    console.error('sendOtp: could not reach server to check existing profile:', e);
+    return alert('اتصال به سرور برقرار نشد. برای جلوگیری از تغییر ناخواسته کد معرف یا شناسه کیف پول، ورود متوقف شد. لطفاً اینترنت را بررسی کن و دوباره تلاش کن.');
+  }
+  const local=loadUser();
+  const base=(local && local.phone===phone) ? local : {phone,userId:uid(),refCode:refcode(),wallet:0,referralUsed:null,invites:0,claimedRewards:[],freeMembers:0};
+  currentUser = remoteProfile ? {...base, ...remoteProfile, wallet: remoteProfile.wallet||0} : base;
+  currentUser.phone=phone;
+  saveUser();
+  const otp=String(Math.floor(1000+Math.random()*9000));
+  S(LS.otp,otp);
+  document.getElementById('step-otp').classList.remove('hidden');
+  alert('کد ورود: '+otp);
+}
+
+function verifyOtp(){
+  if(digits(document.getElementById('otp-input').value)!==(localStorage.getItem(LS.otp)||'')) return alert('کد اشتباه است');
+  localStorage.setItem(LS.auth,'1');
+  ensureUser();
+  saveUser();
+  addVisit();
+  hideAuthShowApp();
+  show('home-page');
+  initAfterLogin();
+}
+
+function initAfterLogin(){
+  refreshUI();
+  createWheel();
+  refreshUserViews();
+  syncMyData();
+  if(userSyncTimer) clearInterval(userSyncTimer);
+  userSyncTimer=setInterval(syncMyData,8000);
+}
+
+// ---- Dual persistence helpers (localStorage + Firestore) ----
+
+// Pushes a fully-formed activity record (visit/exit/spin) both to localStorage and Firestore.
+async function persistActivity(item){
+  const v=getVisits();
+  v.unshift(item);
+  setVisits(v);
+  if(window.fbAddEvent){
+    try{
+      const docId=await window.fbAddEvent({type:item.type,data:item,time:item.time,visitorId,phone:currentUser?.phone||''});
+      if(docId) remoteDocIndex[item.id]=docId;
+    }catch(e){ console.error('persistActivity: Firestore write failed (check Firestore rules):', e); }
+  }
+}
+
+function addVisit(){
+  const item={id:uid(),visitorId,phone:currentUser?.phone||'',time:new Date().toISOString(),type:'visit'};
+  persistActivity(item);
+}
+function logExit(){
+  const item={id:uid(),visitorId,phone:currentUser?.phone||'',time:new Date().toISOString(),type:'exit'};
+  persistActivity(item);
+}
+function logSpin(prizeText){
+  const item={id:uid(),visitorId,phone:currentUser?.phone||'',time:new Date().toISOString(),type:'spin',prize:prizeText};
+  persistActivity(item);
+}
+
+// BUGFIX #1: logout previously only removed the "auth" flag, leaving the user object, wallet,
+// last-spin timestamp, and every local list (support/deposits/orders/transfers/visits) in
+// localStorage. Now every account-scoped key is cleared so the app returns to a clean guest state.
+function logout(){
+  if(userSyncTimer){clearInterval(userSyncTimer);userSyncTimer=null}
+  logExit(); // must run before clearing local state, since it still needs currentUser/visitorId
+  localStorage.removeItem(LS.user);
+  localStorage.removeItem(LS.auth);
+  localStorage.removeItem(LS.lastSpin);
+  localStorage.removeItem(LS.refUsed);
+  localStorage.removeItem(LS.support);
+  localStorage.removeItem(LS.deposits);
+  localStorage.removeItem(LS.orders);
+  localStorage.removeItem(LS.transfers);
+  localStorage.removeItem(LS.visits);
+  currentUser=null;
+  remoteEvents=[];
+  remoteDocIndex={};
+  showAuth();
+}
+
+function openDeposit(){navigateTo('deposit-page');showDepositMethod('manual')}
+function showDepositMethod(m){document.getElementById('deposit-manual-section').classList.toggle('hidden',m!=='manual');document.getElementById('deposit-direct-section').classList.toggle('hidden',m!=='direct')}
+
+// Saves an order/support/deposit/transfer record both locally and to Firestore,
+// and remembers the Firestore doc id so later updates (reply, approve, reject) can find it.
+async function persistBoth(type,payload){
+  const key=type==='support'?LS.support:type==='deposit'?LS.deposits:type==='order'?LS.orders:LS.transfers;
+  const arr=G(key,[]);
+  arr.unshift(payload);
+  S(key,arr);
+  if(window.fbAddEvent){
+    try{
+      const docId=await window.fbAddEvent({type,data:payload,time:payload.time,visitorId,phone:currentUser.phone});
+      if(docId) remoteDocIndex[payload.id]=docId;
+    }catch(e){ console.error('persistBoth: Firestore write failed (check Firestore rules):', e); }
+  }
+}
+
+async function submitDepositRequest(){
+  const amount=parseInt(document.getElementById('deposit-amount').value||'0',10);
+  const ref=document.getElementById('deposit-ref').value.trim();
+  if(!amount||amount<=0) return alert('مبلغ معتبر وارد کن');
+  if(!ref) return alert('کد پیگیری را وارد کن');
+  const req={id:uid(),visitorId,phone:currentUser.phone,amount,ref,status:'pending',reply:'',credited:false,time:new Date().toISOString(),type:'deposit'};
+  await persistBoth('deposit',req);
+  alert('درخواست واریز شما ثبت شد و در انتظار تایید مدیر است. وضعیت آن را می‌توانید از بخش «پیگیری» ببینید.');
+  navigateTo('home-page');
+}
+
+async function submitTransferRequest(){
+  const to=document.getElementById('transfer-wallet-id').value.trim();
+  const amount=parseInt(document.getElementById('transfer-amount').value||'0',10);
+  if(!to||!amount) return alert('شناسه و مبلغ معتبر وارد کن');
+  if(getWallet()<amount) return alert('اعتبار کافی نیست');
+  subWallet(amount);
+  const item={id:uid(),visitorId,from:currentUser.userId,to,amount,status:'pending',credited:false,refunded:false,time:new Date().toISOString(),type:'transfer'};
+  await persistBoth('transfer',item);
+  alert('درخواست انتقال شما ثبت شد و در انتظار تایید مدیر است. وضعیت آن را می‌توانید از بخش «پیگیری» ببینید.');
+  navigateTo('home-page');
+}
+
+async function submitSupport(){
+  const text=document.getElementById('support-text').value.trim();
+  if(!text) return alert('متن مشکل را وارد کن');
+  const item={id:uid(),visitorId,phone:currentUser.phone,text,status:'open',reply:'',time:new Date().toISOString(),type:'support'};
+  await persistBoth('support',item);
+  document.getElementById('support-text').value='';
+  renderMySupport();
+  alert('پیام به مدیریت ارسال شد');
+}
+
+// Renders every ticket the user has sent as its own small card with its own status badge
+// (پاسخ داده شد / در انتظار), instead of just showing the single latest reply.
+function renderMySupport(){
+  const box=document.getElementById('my-support-list');
+  if(!box||!currentUser) return;
+  const items=mergeByType(getSupport(),'support').filter(s=>s.phone===currentUser.phone);
+  items.sort((a,b)=>new Date(b.time)-new Date(a.time));
+  if(!items.length){box.innerHTML='<div class="text-center text-slate-500 py-8">هنوز سوالی ثبت نشده</div>';return}
+  box.innerHTML=items.map(s=>`<div class="bg-slate-900 rounded-2xl p-4">
+    <div class="flex items-center justify-between mb-2 gap-2">
+      <span class="text-xs text-zinc-500 shrink-0">${formatTime(s.time)}</span>
+      <span class="text-xs px-3 py-1 rounded-full ${s.status==='closed'?'bg-emerald-500/20 text-emerald-300':'bg-amber-500/20 text-amber-300'}">${s.status==='closed'?'پاسخ داده شد':'در انتظار'}</span>
+    </div>
+    <div class="text-sm text-slate-300 break-words">${s.text}</div>
+    ${s.status==='closed'?`<div class="mt-3 pt-3 border-t border-slate-800 text-sm text-emerald-300 break-words">${s.reply||''}</div>`:''}
+  </div>`).join('');
+}
+
+function getSelectedPrice(){const sel=document.getElementById('product-select');return parseInt(sel.options[sel.selectedIndex].dataset.price,10)||25000}
+document.addEventListener('change',e=>{if(e.target&&e.target.id==='product-select'){const el=document.getElementById('selected-price'); if(el) el.textContent=money(getSelectedPrice())+' تومان'}})
+
+async function submitOrder(){
+  const channel=document.getElementById('channel-input').value.trim();
+  if(!channel) return alert('آیدی کانال را وارد کن');
+  const coupon=document.getElementById('coupon-input').value.trim().toUpperCase();
+  const price=getSelectedPrice();
+  if(getWallet()<price){ alert('موجودی کافی نیست، به بخش افزایش موجودی هدایت می‌شوید'); openDeposit(); return; }
+  subWallet(price);
+  const order={id:uid(),visitorId,phone:currentUser.phone,package:document.getElementById('product-select').value,price,channel,coupon,status:'pending',refunded:false,time:new Date().toISOString(),type:'order'};
+  await persistBoth('order',order);
+  alert('سفارش شما ثبت شد و در انتظار تایید مدیر است. وضعیت آن را می‌توانید از بخش «پیگیری» ببینید.');
+  navigateTo('home-page');
+}
+
+
+function createWheel(){
+  const wheel=document.getElementById('wheel');
+  if(!wheel) return;
+  wheel.innerHTML='';
+  const ang=360/prizes.length;
+  prizes.forEach((p,i)=>{
+    const seg=document.createElement('div');
+    seg.className='segment';
+    seg.style.backgroundColor=p.color;
+    seg.style.transform=`rotate(${i*ang}deg) skewY(-${90-(ang/2)}deg)`;
+    seg.innerHTML=`<span style="transform: rotate(${90-(ang/2)}deg); display:block; text-align:center;">${p.text}</span>`;
+    wheel.appendChild(seg);
+  });
+}
+
+function spinWheel(){
+  const last=getLastSpin();
+  if(last&&Date.now()-last<24*60*60*1000) return alert('گردونه فقط روزی یک بار قابل چرخیدن است');
+  if(spinning) return;
+  spinning=true;
+  const btn=document.getElementById('spin-btn');
+  if(btn) btn.disabled=true;
+  const idx=safeStopIndices[Math.floor(Math.random()*safeStopIndices.length)];
+  const ang=360/prizes.length;
+  const stop=(idx*ang)+(ang/2);
+  const total=360*6+(360-stop)+(Math.random()*6-3);
+  currentAngle=(currentAngle+total)%360;
+  const wheel=document.getElementById('wheel');
+  wheel.style.transition='transform 4.5s cubic-bezier(.17,.67,.12,.99)';
+  wheel.style.transform=`rotate(${currentAngle}deg)`;
+  setTimeout(()=>{
+    setLastSpin(Date.now());
+    const p=prizes[idx];
+    if(p.type==='wallet') addWallet(10000);
+    logSpin(p.text);
+    const r=document.getElementById('wheel-result');
+    r.classList.remove('hidden');
+    r.innerHTML=`<div class="text-5xl mb-3">${p.type==='lose'?'😶':p.type==='again'?'🔁':p.type==='wallet'?'💎':'🎉'}</div><div class="text-2xl font-black">${p.text}</div><div class="text-slate-300 mt-2 text-sm">${p.type==='wallet'?'۱۰ هزار اعتبار به کیف پول اضافه شد':'نتیجه ثبت شد'}</div>`;
+    spinning=false;
+    if(btn) btn.disabled=false;
+    refreshUI();
+  },4600);
+}
+
+function formatTime(iso){try{return new Date(iso).toLocaleString('fa-IR',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'})}catch(e){return iso}}
+function setAdminView(m){adminView=m;document.getElementById('view-events-btn').className='flex-1 py-2.5 rounded-xl text-sm font-bold '+(m==='events'?'bg-blue-600':'bg-slate-800');document.getElementById('view-customers-btn').className='flex-1 py-2.5 rounded-xl text-sm font-bold '+(m==='customers'?'bg-blue-600':'bg-slate-800');document.getElementById('admin-filters').classList.toggle('hidden',m==='customers');renderAdminEvents()}
+function setAdminFilter(f){adminFilter=f;document.querySelectorAll('.admin-filter-btn').forEach(b=>{b.classList.remove('bg-blue-600');b.classList.add('bg-slate-800')});const active=document.querySelector(`.admin-filter-btn[data-filter="${f}"]`); if(active){active.classList.remove('bg-slate-800');active.classList.add('bg-blue-600')}renderAdminEvents()}
+function typeMeta(type){return {order:{icon:'fa-cart-plus',color:'text-blue-400',bg:'bg-blue-500/10',label:'سفارش'},support:{icon:'fa-headset',color:'text-indigo-400',bg:'bg-indigo-500/10',label:'پشتیبانی'},deposit:{icon:'fa-wallet',color:'text-emerald-400',bg:'bg-emerald-500/10',label:'واریز'},spin:{icon:'fa-dice',color:'text-yellow-400',bg:'bg-yellow-500/10',label:'گردونه'},visit:{icon:'fa-right-to-bracket',color:'text-zinc-300',bg:'bg-zinc-700/30',label:'ورود'},exit:{icon:'fa-right-from-bracket',color:'text-rose-400',bg:'bg-rose-500/10',label:'خروج'},transfer:{icon:'fa-right-left',color:'text-fuchsia-400',bg:'bg-fuchsia-500/10',label:'انتقال'}}[type]||{icon:'fa-circle-info',color:'text-zinc-300',bg:'bg-zinc-700/30',label:type}}
+function eventDetail(ev){
+  if(ev.type==='order') return `کاربر ${ev.visitorId||'-'} سفارش ${ev.package||'-'} عضو ثبت کرده. کانال: ${ev.channel||'-'} ${ev.coupon?`| کد: ${ev.coupon}`:''}`;
+  if(ev.type==='support') return `کاربر ${ev.visitorId||'-'}: ${ev.text||''}`;
+  if(ev.type==='deposit') return `مبلغ ${money(ev.amount||0)} تومان | کد پیگیری: ${ev.ref||'-'} | وضعیت: ${statusLabel(ev.status)}`;
+  if(ev.type==='transfer') return `از ${ev.from||'-'} به ${ev.to||'-'} | مبلغ: ${money(ev.amount||0)} تومان | وضعیت: ${statusLabel(ev.status)}`;
+  if(ev.type==='spin') return `کاربر ${ev.visitorId||'-'} چرخوند: ${ev.prize||'-'}`;
+  if(ev.type==='visit') return `ورود کاربر ${ev.phone||'-'}`;
+  if(ev.type==='exit') return `خروج کاربر ${ev.phone||'-'}`;
+  return JSON.stringify(ev);
+}
+function statusLabel(s){return s==='approved'?'تایید شده':s==='rejected'?'رد شده':'در انتظار'}
+
+// Fetches all events from Firestore and records, for each one, which local id it corresponds to
+// (so admin actions like "reply" can find the right Firestore document to update).
+async function fetchRemoteEvents(){
+  if(!window.fbReady || !window.fbGetEvents) return [];
+  try{
+    const docs=await window.fbGetEvents();
+    docs.forEach(d=>{ const localId=d.data&&d.data.id; if(localId) remoteDocIndex[localId]=d.id; });
+    return docs;
+  }catch(e){ console.error('fetchRemoteEvents failed (check Firestore rules):', e); return []; }
+}
+
+// Merges a local array (source of truth for this device) with remote Firestore records of the
+// same type (covers records created on other devices/browsers), de-duplicating by the record's id.
+function mergeByType(localArr,type){
+  const map=new Map();
+  localArr.forEach(item=>map.set(item.id,{...item,type}));
+  remoteEvents.filter(r=>r.type===type).forEach(r=>{
+    const base=r.data||{};
+    if(!base.id) return;
+    if(map.has(base.id)) map.set(base.id,{...map.get(base.id),...base,type});
+    else map.set(base.id,{...base,type});
+  });
+  return Array.from(map.values());
+}
+
+// This is the function the UI calls to load/refresh the admin panel. It was previously missing,
+// which is why the panel got stuck on "در حال بارگذاری..." and never showed any data.
+async function refreshAdminEvents(forceRemote){
+  const updatedEl=document.getElementById('admin-updated');
+  if(updatedEl) updatedEl.textContent='در حال بارگذاری...';
+  remoteEvents=await fetchRemoteEvents();
+  renderAdminEvents();
+}
+
+// Refreshes every "my ..." list the customer can see. Safe to call even if the relevant
+// page/elements aren't currently in the DOM — each render function checks for its container first.
+function refreshUserViews(){
+  renderTrackPage();
+  renderMySupport();
+}
+
+// Runs on the CURRENT USER's device: pulls the latest state of their own orders/deposits/transfers/
+// support tickets from storage and applies wallet changes locally. This is what actually credits or
+// refunds a user's wallet once the admin approves/rejects something from a different device/session,
+// since the wallet balance only ever changes on the device it's read from — the admin panel has no
+// way to touch it directly. Everything is matched by phone number (or persistent userId for
+// transfers) rather than the per-browser visitorId, so it keeps working even after a logout/login,
+// a cleared browser, or a completely different device.
+async function syncMyData(){
+  if(!window.fbGetEvents || !currentUser) return;
+  try{
+    const docs=await window.fbGetEvents();
+    docs.forEach(d=>{ const localId=d.data&&d.data.id; if(localId) remoteDocIndex[localId]=d.id; });
+    remoteEvents=docs; // so mergeByType() reflects the latest data on the customer's own pages too
+    let walletChanged=false;
+
+    // Deposits this user requested — credit wallet on approval
+    docs.filter(d=>d.type==='deposit' && d.data && d.data.phone===currentUser.phone).forEach(d=>{
+      const rd=d.data;
+      if(rd.status==='approved' && !rd.credited){
+        addWallet(rd.amount); walletChanged=true; rd.credited=true;
+        if(window.fbUpdateEvent) window.fbUpdateEvent(d.id,{'data.credited':true}).catch(()=>{});
+      }
+    });
+
+    // Orders this user placed — refund the price if the admin rejects it
+    docs.filter(d=>d.type==='order' && d.data && d.data.phone===currentUser.phone).forEach(d=>{
+      const rd=d.data;
+      if(rd.status==='rejected' && !rd.refunded){
+        addWallet(rd.price); walletChanged=true; rd.refunded=true;
+        if(window.fbUpdateEvent) window.fbUpdateEvent(d.id,{'data.refunded':true}).catch(()=>{});
+      }
+    });
+
+    // Transfers this user sent — refund on rejection (amount was deducted immediately at submit time)
+    docs.filter(d=>d.type==='transfer' && d.data && d.data.from===currentUser.userId).forEach(d=>{
+      const rd=d.data;
+      if(rd.status==='rejected' && !rd.refunded){
+        addWallet(rd.amount); walletChanged=true; rd.refunded=true;
+        if(window.fbUpdateEvent) window.fbUpdateEvent(d.id,{'data.refunded':true}).catch(()=>{});
+      }
+    });
+
+    // Transfers this user received — credit on approval (receiver may not have a local record at all).
+    // This remains as a fallback path alongside the direct credit now done in approveTransfer();
+    // the !credited guard means there is no double-credit risk if both paths fire.
+    docs.filter(d=>d.type==='transfer' && d.data && d.data.to===currentUser.userId).forEach(d=>{
+      const rd=d.data;
+      if(rd.status==='approved' && !rd.credited){
+        addWallet(rd.amount); walletChanged=true; rd.credited=true;
+        if(window.fbUpdateEvent) window.fbUpdateEvent(d.id,{'data.credited':true}).catch(()=>{});
+      }
+    });
+
+    if(walletChanged) refreshUI();
+    refreshUserViews();
+  }catch(e){ console.error('syncMyData failed (check Firestore rules):', e); }
+}
+
+function renderAdminEvents(){
+  const box=document.getElementById('admin-events');
+  const empty=document.getElementById('admin-empty');
+  const orders=mergeByType(getOrders(),'order');
+  const supports=mergeByType(getSupport(),'support');
+  const deposits=mergeByType(getDeposits(),'deposit');
+  const transfers=mergeByType(getTransfers(),'transfer');
+  const visits=mergeByType(getVisits().filter(v=>v.type==='visit'),'visit');
+  const exits=mergeByType(getVisits().filter(v=>v.type==='exit'),'exit');
+  const spins=mergeByType(getVisits().filter(v=>v.type==='spin'),'spin');
+  let all=[...orders,...supports,...deposits,...transfers,...visits,...exits,...spins].sort((a,b)=>new Date(b.time)-new Date(a.time));
+  if(adminFilter!=='all') all=all.filter(e=>e.type===adminFilter);
+  if(!all.length){
+    box.innerHTML='';
+    empty.classList.remove('hidden');
+  } else {
+    empty.classList.add('hidden');
+    box.innerHTML=all.map(ev=>{
+      const m=typeMeta(ev.type);
+      return `<div class="event-row bg-zinc-900 rounded-2xl p-4 flex items-start gap-3">
+        <div class="w-10 h-10 rounded-xl ${m.bg} flex items-center justify-center shrink-0"><i class="fas ${m.icon} ${m.color}"></i></div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center justify-between gap-2">
+            <span class="font-bold text-sm ${m.color}">${m.label}</span>
+            <span class="text-xs text-zinc-500 shrink-0">${formatTime(ev.time)}</span>
+          </div>
+          <p class="text-sm text-zinc-300 mt-1 break-words">${eventDetail(ev)}</p>
+          ${ev.type==='support'?`<div class="mt-3 flex gap-2"><button class="bg-emerald-600 px-3 py-1.5 rounded-lg text-xs" onclick="openReply('${ev.id}')">پاسخ</button><span class="text-xs ${ev.status==='open'?'text-amber-300':'text-emerald-300'}">${ev.status==='open'?'باز':'بسته'}</span></div>`:''}
+          ${ev.type==='deposit'&&ev.status==='pending'?`<div class="mt-3 flex gap-2"><button class="bg-emerald-600 px-3 py-1.5 rounded-lg text-xs" onclick="approveDeposit('${ev.id}')">تایید</button><button class="bg-rose-600 px-3 py-1.5 rounded-lg text-xs" onclick="rejectDeposit('${ev.id}')">رد</button></div>`:''}
+          ${ev.type==='transfer'&&ev.status==='pending'?`<div class="mt-3 flex gap-2"><button class="bg-emerald-600 px-3 py-1.5 rounded-lg text-xs" onclick="approveTransfer('${ev.id}')">تایید</button><button class="bg-rose-600 px-3 py-1.5 rounded-lg text-xs" onclick="rejectTransfer('${ev.id}')">رد</button></div>`:''}
+          ${ev.type==='order'&&ev.status==='pending'?`<div class="mt-3 flex gap-2"><button class="bg-emerald-600 px-3 py-1.5 rounded-lg text-xs" onclick="approveOrder('${ev.id}')">ثبت سفارش</button><button class="bg-rose-600 px-3 py-1.5 rounded-lg text-xs" onclick="rejectOrder('${ev.id}')">رد</button></div>`:''}
+        </div>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('stat-orders').textContent=orders.length.toLocaleString('fa-IR');
+  document.getElementById('stat-support').textContent=supports.length.toLocaleString('fa-IR');
+  document.getElementById('stat-spins').textContent=spins.length.toLocaleString('fa-IR');
+  document.getElementById('stat-visits').textContent=visits.length.toLocaleString('fa-IR');
+  document.getElementById('admin-updated').textContent='آخرین بروزرسانی: '+new Date().toLocaleTimeString('fa-IR');
+}
+
+function openReply(id){pendingReplyId=id;document.getElementById('reply-input').value='';document.getElementById('reply-modal').classList.remove('hidden')}
+function closeReplyModal(){document.getElementById('reply-modal').classList.add('hidden');pendingReplyId=null}
+function saveReply(){
+  const txt=document.getElementById('reply-input').value.trim();
+  if(!txt) return alert('پاسخ را بنویسید');
+  const arr=getSupport();
+  const idx=arr.findIndex(x=>x.id===pendingReplyId);
+  if(idx>-1){
+    arr[idx].reply=txt;
+    arr[idx].status='closed';
+    setSupport(arr);
+    const docId=remoteDocIndex[arr[idx].id];
+    if(window.fbUpdateEvent && docId) window.fbUpdateEvent(docId,{'data.reply':txt,'data.status':'closed'}).catch(()=>{});
+    renderAdminEvents();
+    renderMySupport();
+    closeReplyModal();
+    alert('پاسخ ثبت شد');
+  }
+}
+
+// Note: approving here only flags the record as approved (in localStorage on THIS device and in
+// Firestore). It does not, and cannot, touch the depositing user's wallet directly — that lives in
+// their own browser's localStorage. The actual credit happens in syncMyData(), which runs on the
+// user's own device (on login and every 8s) and checks status==='approved' && !credited.
+function approveDeposit(id){
+  const arr=getDeposits(); const item=arr.find(x=>x.id===id);
+  const docId=remoteDocIndex[id];
+  if(item){ item.status='approved'; setDeposits(arr); }
+  if(window.fbUpdateEvent && docId) window.fbUpdateEvent(docId,{'data.status':'approved'}).catch(()=>{});
+  // If the admin is viewing on the same device/session as the depositor (or it's a test run),
+  // reflect it immediately too.
+  if(currentUser && item && item.phone===currentUser.phone && !item.credited){
+    addWallet(item.amount); item.credited=true; setDeposits(arr);
+    if(window.fbUpdateEvent && docId) window.fbUpdateEvent(docId,{'data.credited':true}).catch(()=>{});
+  }
+  renderAdminEvents();
+}
+function rejectDeposit(id){
+  const arr=getDeposits(); const item=arr.find(x=>x.id===id);
+  const docId=remoteDocIndex[id];
+  if(item){ item.status='rejected'; setDeposits(arr); }
+  if(window.fbUpdateEvent && docId) window.fbUpdateEvent(docId,{'data.status':'rejected'}).catch(()=>{});
+  renderAdminEvents();
+}
+
+// BUGFIX #4: previously, approving a transfer only flipped its status to 'approved' — the
+// receiver's wallet was only ever credited by the fallback poll in syncMyData(), and only if the
+// receiver happened to be logged in on their own device to trigger it. Now the receiver's phone is
+// resolved via walletindex and their Firestore wallet balance is atomically incremented as part of
+// approval itself, so the credit lands immediately and does not depend on the receiver being online.
+async function approveTransfer(id){
+  const arr=getTransfers(); const item=arr.find(x=>x.id===id);
+  const docId=remoteDocIndex[id];
+  if(item){ item.status='approved'; setTransfers(arr); }
+  if(window.fbUpdateEvent && docId) await window.fbUpdateEvent(docId,{'data.status':'approved'}).catch(()=>{});
+  if(item && !item.credited){
+    const receiverPhone = await lookupPhoneByUserId(item.to);
+    if(receiverPhone){
+      try{
+        await db.collection('profiles').doc(receiverPhone).update({wallet: firebase.firestore.FieldValue.increment(item.amount)});
+        item.credited=true; setTransfers(arr);
+        if(window.fbUpdateEvent && docId) await window.fbUpdateEvent(docId,{'data.credited':true}).catch(()=>{});
+        // If the admin happens to be logged in as the receiver (same device/session), reflect it
+        // in the in-memory currentUser immediately too.
+        if(currentUser && currentUser.userId===item.to){ currentUser.wallet=(currentUser.wallet||0)+item.amount; saveUser(); }
+      }catch(e){ console.error('approveTransfer: crediting receiver failed (check Firestore rules):', e); }
+    }
+  }
+  renderAdminEvents();
+}
+function rejectTransfer(id){
+  const arr=getTransfers(); const item=arr.find(x=>x.id===id);
+  const docId=remoteDocIndex[id];
+  if(item){ item.status='rejected'; setTransfers(arr); }
+  if(window.fbUpdateEvent && docId) window.fbUpdateEvent(docId,{'data.status':'rejected'}).catch(()=>{});
+  if(currentUser && item && item.from===currentUser.userId && !item.refunded){
+    addWallet(item.amount); item.refunded=true; setTransfers(arr);
+    if(window.fbUpdateEvent && docId) window.fbUpdateEvent(docId,{'data.refunded':true}).catch(()=>{});
+  }
+  renderAdminEvents();
+}
+
+// Approving marks the order as registered/done for the customer to see in پیگیری. Rejecting refunds
+// the price back to the customer's wallet (handled in syncMyData on their own device).
+function approveOrder(id){
+  const arr=getOrders(); const item=arr.find(x=>x.id===id);
+  const docId=remoteDocIndex[id];
+  if(item){ item.status='approved'; setOrders(arr); }
+  if(window.fbUpdateEvent && docId) window.fbUpdateEvent(docId,{'data.status':'approved'}).catch(()=>{});
+  renderAdminEvents();
+}
+function rejectOrder(id){
+  const arr=getOrders(); const item=arr.find(x=>x.id===id);
+  const docId=remoteDocIndex[id];
+  if(item){ item.status='rejected'; setOrders(arr); }
+  if(window.fbUpdateEvent && docId) window.fbUpdateEvent(docId,{'data.status':'rejected'}).catch(()=>{});
+  if(currentUser && item && item.phone===currentUser.phone && !item.refunded){
+    addWallet(item.price); item.refunded=true; setOrders(arr);
+    if(window.fbUpdateEvent && docId) window.fbUpdateEvent(docId,{'data.refunded':true}).catch(()=>{});
+  }
+  renderAdminEvents();
+}
+
+function clearAllEvents(){
+  if(!confirm('همه داده‌ها پاک شوند؟')) return;
+  setVisits([]);setSupport([]);setDeposits([]);setOrders([]);setTransfers([]);
+  remoteEvents=[];remoteDocIndex={};
+  if(window.fbDeleteAllEvents) window.fbDeleteAllEvents().catch(()=>{});
+  renderAdminEvents();
+}
+
+function renderTrackPage(){
+  renderMyOrders();
+  renderMyDeposits();
+  renderMyTransfers();
+}
+
+function statusColor(s){return s==='approved'?'text-emerald-300':s==='rejected'?'text-rose-300':'text-amber-300'}
+
+function renderMyOrders(){
+  const box=document.getElementById('my-orders');
+  if(!box||!currentUser) return;
+  const orders=mergeByType(getOrders(),'order').filter(o=>o.phone===currentUser.phone).sort((a,b)=>new Date(b.time)-new Date(a.time));
+  if(!orders.length){box.innerHTML='<div class="text-center text-slate-500 py-12">هنوز سفارشی ثبت نشده</div>';return}
+  box.innerHTML=orders.map(o=>`<div class="bg-slate-900 rounded-2xl p-4"><div class="flex items-center justify-between"><span class="font-bold text-sm">${o.package} عضو</span><span class="text-xs text-slate-500">${formatTime(o.time)}</span></div><div class="text-xs text-slate-400 mt-1">کانال: ${o.channel}</div><div class="text-xs text-slate-400 mt-1">کد تخفیف: ${o.coupon||'ندارد'}</div><div class="mt-2 text-xs ${statusColor(o.status)}">${statusLabel(o.status)}</div></div>`).join('')
+}
+
+function renderMyDeposits(){
+  const box=document.getElementById('my-deposits');
+  if(!box||!currentUser) return;
+  const items=mergeByType(getDeposits(),'deposit').filter(d=>d.phone===currentUser.phone).sort((a,b)=>new Date(b.time)-new Date(a.time));
+  if(!items.length){box.innerHTML='<div class="text-center text-slate-500 py-8">هنوز واریزی ثبت نشده</div>';return}
+  box.innerHTML=items.map(d=>`<div class="bg-slate-900 rounded-2xl p-4"><div class="flex items-center justify-between"><span class="font-bold text-sm">${money(d.amount)} تومان</span><span class="text-xs text-slate-500">${formatTime(d.time)}</span></div><div class="text-xs text-slate-400 mt-1">کد پیگیری: ${d.ref||'-'}</div><div class="mt-2 text-xs ${statusColor(d.status)}">${statusLabel(d.status)}</div></div>`).join('')
+}
+
+function renderMyTransfers(){
+  const box=document.getElementById('my-transfers');
+  if(!box||!currentUser) return;
+  const items=mergeByType(getTransfers(),'transfer').filter(t=>t.from===currentUser.userId).sort((a,b)=>new Date(b.time)-new Date(a.time));
+  if(!items.length){box.innerHTML='<div class="text-center text-slate-500 py-8">هنوز انتقالی ثبت نشده</div>';return}
+  box.innerHTML=items.map(t=>`<div class="bg-slate-900 rounded-2xl p-4"><div class="flex items-center justify-between"><span class="font-bold text-sm">${money(t.amount)} تومان</span><span class="text-xs text-slate-500">${formatTime(t.time)}</span></div><div class="text-xs text-slate-400 mt-1">به: ${t.to}</div><div class="mt-2 text-xs ${statusColor(t.status)}">${statusLabel(t.status)}</div></div>`).join('')
+}
+
+function renderRewards(){
+  if(!currentUser) return;
+  document.getElementById('my-ref-code').textContent=currentUser.refCode;
+  const inviteCount=currentUser.invites||0;
+  document.getElementById('my-referrals').textContent=inviteCount.toLocaleString('fa-IR');
+  updateRewardButton(5, inviteCount >= 5, (currentUser.claimedRewards||[]).includes(5));
+  updateRewardButton(10, inviteCount >= 10, (currentUser.claimedRewards||[]).includes(10));
+  updateRewardButton(20, inviteCount >= 20, (currentUser.claimedRewards||[]).includes(20));
+  renderRewardReferralBox();
+}
+function updateRewardButton(threshold, enabled, claimed){
+  const btn=document.getElementById(`reward-${threshold}`);
+  if(!btn) return;
+  btn.disabled=!enabled || claimed;
+  btn.className=`w-full rounded-2xl py-4 font-bold ${claimed ? 'bg-emerald-700' : enabled ? 'bg-blue-600' : 'bg-slate-800'}`;
+  btn.textContent=threshold===5 ? '۵ دعوت = ۱۰۰ عضو رایگان' : threshold===10 ? '۱۰ دعوت = ۲۰۰ عضو رایگان' : '۲۰ دعوت = ۵۰۰ عضو رایگان';
+  if(claimed) btn.textContent += ' - فعال شده';
+}
+// Reflects whether this account has already used a referral code: locks the box and shows a green
+// check + the stored code if so, otherwise leaves it open for one submission.
+function renderRewardReferralBox(){
+  const input=document.getElementById('reward-ref-input');
+  const btn=document.getElementById('reward-ref-btn');
+  const indicator=document.getElementById('reward-ref-indicator');
+  const msg=document.getElementById('reward-ref-msg');
+  if(!input||!currentUser) return;
+  if(currentUser.referralUsed){
+    input.value=currentUser.referralUsed;
+    input.disabled=true;
+    btn.disabled=true;
+    btn.textContent='قبلاً ثبت شده';
+    indicator.textContent='✓';
+    indicator.className='absolute left-4 top-1/2 -translate-y-1/2 text-lg text-emerald-400';
+    msg.textContent='کد معرف شما قبلاً با موفقیت ثبت شده است.';
+    msg.className='text-xs text-emerald-300';
+  } else {
+    input.disabled=false;
+    btn.disabled=false;
+    btn.textContent='ثبت کد';
+    indicator.textContent='';
+    msg.textContent='';
+  }
+}
+async function submitRewardReferral(){
+  const input=document.getElementById('reward-ref-input');
+  const indicator=document.getElementById('reward-ref-indicator');
+  const msg=document.getElementById('reward-ref-msg');
+  const code=(input.value||'').trim().toUpperCase();
+  const result=await applyReferralCode(code);
+  if(result.ok){
+    indicator.textContent='✓';
+    indicator.className='absolute left-4 top-1/2 -translate-y-1/2 text-lg text-emerald-400';
+    msg.textContent=result.message;
+    msg.className='text-xs text-emerald-300';
+    refreshUI();
+    renderRewardReferralBox();
+  } else {
+    indicator.textContent='✗';
+    indicator.className='absolute left-4 top-1/2 -translate-y-1/2 text-lg text-rose-400';
+    msg.textContent=result.message;
+    msg.className='text-xs text-rose-300';
+  }
+}
+function claimReward(threshold){
+  const inviteCount=currentUser.invites||0;
+  if(inviteCount < threshold) return alert('هنوز به این تعداد دعوت نرسیده‌اید');
+  currentUser.claimedRewards=currentUser.claimedRewards||[];
+  if(currentUser.claimedRewards.includes(threshold)) return alert('این جایزه قبلاً فعال شده است');
+  currentUser.claimedRewards.push(threshold);
+  if(threshold===5) currentUser.freeMembers=(currentUser.freeMembers||0)+100;
+  if(threshold===10) currentUser.freeMembers=(currentUser.freeMembers||0)+200;
+  if(threshold===20) currentUser.freeMembers=(currentUser.freeMembers||0)+500;
+  saveUser();
+  refreshUI();
+  renderRewards();
+  alert('جایزه فعال شد');
+}
+
+function skipReferral(){document.getElementById('step-referral').classList.add('hidden')}
+async function saveReferral(){
+  const code=document.getElementById('ref-input').value.trim().toUpperCase();
+  if(!code) return alert('کد معرف را وارد کن');
+  const result=await applyReferralCode(code);
+  if(!result.ok) return alert(result.message);
+  document.getElementById('step-referral').classList.add('hidden');
+  refreshUI();
+  alert(result.message);
+}
+
+// BUGFIX #2 (support): boot() applies the remote profile's wallet explicitly on every fresh
+// page load, instead of relying on the freshly-loaded local object which may hold a stale value.
+async function boot(){
+  visitorId=localStorage.getItem('visitor_id')||uid();
+  localStorage.setItem('visitor_id',visitorId);
+  currentUser=loadUser();
+  if(localStorage.getItem(LS.auth) && currentUser){
+    if(currentUser.phone){
+      try{
+        const remote=await loadRemoteProfile(currentUser.phone);
+        if(remote) currentUser={...currentUser, ...remote, wallet: remote.wallet||0};
+      }catch(e){
+        // Connectivity/permission error: keep the identity and last-known data already in
+        // localStorage rather than risk any change to userId/refCode/wallet. syncMyData() will
+        // pick up the real remote state again once the connection recovers.
+        console.error('boot: could not reach server, continuing with last known local data:', e);
+      }
+    }
+    saveUser();
+    hideAuthShowApp();
+    show('home-page');
+    initAfterLogin();
+  }else{
+    showAuth();
+  }
+}
+window.addEventListener('pagehide',()=>{if(currentUser&&localStorage.getItem(LS.auth)) logExit()});
+window.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&currentUser&&localStorage.getItem(LS.auth)) logExit()});
+boot();
+</script>
+</body>
+</html>
